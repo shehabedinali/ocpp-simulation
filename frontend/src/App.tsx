@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,59 +16,133 @@ import {
   FieldSeparator,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
-import axios from "axios"
+import axios from "axios";
 
 function App() {
   const [serverUrl, setServerUrl] = useState("ws://localhost:9000");
-  const [cp_id, setCpId] = useState("CP_001");
+  const [cpId, setCpId] = useState("CP_001");
+  const [connectionStatus, setConnectionStatus] = useState<"disconnected" | "connecting" | "connected" | "error">("disconnected");
+
+  const wsRef = useRef<WebSocket | null>(null);
+
+  const connectWebSocket = () => {
+    try {
+      setConnectionStatus("connecting");
+      const ws = new WebSocket(serverUrl);
+
+      ws.onopen = () => {
+        setConnectionStatus("connected");
+        toast.success("WebSocket connected");
+      };
+
+      ws.onclose = () => {
+        setConnectionStatus("disconnected");
+        toast.error("WebSocket disconnected");
+      };
+
+      ws.onerror = () => {
+        setConnectionStatus("error");
+        toast.error("WebSocket error");
+      };
+
+      ws.onmessage = (msg) => {
+        console.log("Message:", msg.data);
+      };
+
+      wsRef.current = ws;
+    } catch (err) {
+      console.error(err);
+      setConnectionStatus("error");
+    }
+  };
 
   const handleConnect = async () => {
     try {
-      const res = await axios.post('http://localhost:8080/emulator', {
-      action: 'connect',
-      serverUrl: 'ws://localhost:9000',
-      chargePointId: cp_id,
-    });
-      console.log(res);
-      toast.success("Connected to charger");
+      setConnectionStatus("connecting");
+
+      await axios.post("http://localhost:8080/emulator", {
+        action: "connect",
+        serverUrl,
+        chargePointId: cpId,
+      });
+
+      connectWebSocket();
     } catch (error) {
-      console.log(error);
-      toast.error("Failed to connect to charger", error.message);
+      console.error(error);
+      toast.error("Failed to connect to charger", {
+        description: error?.message,
+      });
+      setConnectionStatus("error");
     }
-  }
+  };
+
+  useEffect(() => {
+    return () => {
+      wsRef.current?.close();
+    };
+  }, []);
+
+  const getStatusColor = () => {
+    switch (connectionStatus) {
+      case "connected":
+        return "bg-green-500";
+      case "connecting":
+        return "bg-yellow-500 animate-pulse";
+      case "error":
+        return "bg-red-500";
+      default:
+        return "bg-gray-400";
+    }
+  };
 
   return (
     <div className="flex min-h-svh w-screen flex-col items-center justify-center">
-      <Card className="w-1/3">
-        <CardHeader>
-          <CardTitle></CardTitle>
-          <CardDescription></CardDescription>
+      <Card className="w-1/3 shadow-lg border">
+        <CardHeader className="flex flex-row justify-between items-center">
+          <CardTitle className="text-lg font-semibold">Charger Emulator</CardTitle>
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-3 w-3 rounded-full ${getStatusColor()}`}
+              title={connectionStatus}
+            ></span>
+            <span className="text-sm capitalize text-muted-foreground">
+              {connectionStatus}
+            </span>
+          </div>
         </CardHeader>
+
         <CardContent>
+          <CardDescription className="mb-4">
+            Connect to a charger server via WebSocket
+          </CardDescription>
+
           <FieldGroup>
             <Field>
-              <FieldLabel>Charger Url</FieldLabel>
-              <FieldDescription>Enter the URL of the charger</FieldDescription>
+              <FieldLabel>Charger URL</FieldLabel>
+              <FieldDescription>Enter the WebSocket URL</FieldDescription>
               <Input
                 value={serverUrl}
                 onChange={(e) => setServerUrl(e.target.value)}
               />
             </Field>
+
             <FieldSeparator />
+
             <Field>
               <FieldLabel>Charger ID</FieldLabel>
-              <FieldDescription>Enter the ID of the charger</FieldDescription>
+              <FieldDescription>Enter the charger’s ID</FieldDescription>
               <Input
-                value={cp_id}
+                value={cpId}
                 onChange={(e) => setCpId(e.target.value)}
               />
             </Field>
+
             <Button
               className="mt-4 w-full cursor-pointer"
               onClick={handleConnect}
+              disabled={connectionStatus === "connecting"}
             >
-              Connect
+              {connectionStatus === "connecting" ? "Connecting..." : "Connect"}
             </Button>
           </FieldGroup>
         </CardContent>
