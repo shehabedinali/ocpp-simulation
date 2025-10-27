@@ -21,7 +21,9 @@ import axios from "axios";
 function App() {
   const [serverUrl, setServerUrl] = useState("ws://localhost:9000");
   const [cpId, setCpId] = useState("CP_001");
-  const [connectionStatus, setConnectionStatus] = useState<"disconnected" | "connecting" | "connected" | "error">("disconnected");
+  const [connectionStatus, setConnectionStatus] = useState<
+    "disconnected" | "connecting" | "connected" | "error"
+  >("disconnected");
 
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -57,7 +59,6 @@ function App() {
       setConnectionStatus("error");
     }
   };
-
 
   const handleConnect = async () => {
     try {
@@ -102,7 +103,9 @@ function App() {
     <div className="flex min-h-svh w-screen flex-col items-center justify-center">
       <Card className="w-1/3 shadow-lg border">
         <CardHeader className="flex flex-row justify-between items-center">
-          <CardTitle className="text-lg font-semibold">Charger Emulator</CardTitle>
+          <CardTitle className="text-lg font-semibold">
+            Charger Emulator
+          </CardTitle>
           <div className="flex items-center gap-2">
             <span
               className={`h-3 w-3 rounded-full ${getStatusColor()}`}
@@ -134,16 +137,16 @@ function App() {
             <Field>
               <FieldLabel>Charger ID</FieldLabel>
               <FieldDescription>Enter the charger’s ID</FieldDescription>
-              <Input
-                value={cpId}
-                onChange={(e) => setCpId(e.target.value)}
-              />
+              <Input value={cpId} onChange={(e) => setCpId(e.target.value)} />
             </Field>
 
             <Button
               className="mt-4 w-full cursor-pointer"
               onClick={handleConnect}
-              disabled={connectionStatus === "connecting"}
+              disabled={
+                connectionStatus === "connecting" ||
+                connectionStatus === "connected"
+              }
             >
               {connectionStatus === "connecting" ? "Connecting..." : "Connect"}
             </Button>
