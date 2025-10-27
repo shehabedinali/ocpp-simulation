@@ -26,6 +26,11 @@ function App() {
   const wsRef = useRef<WebSocket | null>(null);
 
   const connectWebSocket = () => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      toast.info("Already connected to WebSocket");
+      return;
+    }
+
     try {
       setConnectionStatus("connecting");
       const ws = new WebSocket(serverUrl);
@@ -38,15 +43,12 @@ function App() {
       ws.onclose = () => {
         setConnectionStatus("disconnected");
         toast.error("WebSocket disconnected");
+        wsRef.current = null;
       };
 
       ws.onerror = () => {
         setConnectionStatus("error");
         toast.error("WebSocket error");
-      };
-
-      ws.onmessage = (msg) => {
-        console.log("Message:", msg.data);
       };
 
       wsRef.current = ws;
@@ -55,6 +57,7 @@ function App() {
       setConnectionStatus("error");
     }
   };
+
 
   const handleConnect = async () => {
     try {
